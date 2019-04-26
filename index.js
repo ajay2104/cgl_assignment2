@@ -13,6 +13,6 @@ app.use(bodyParser.json());
 
 app.use(adminRoutes);
 
-app.listen(3000,function(req,res,next){
-    console.log('App is running on port 4000');
+app.listen(8000,function(req,res,next){
+    console.log('App is running');
 })

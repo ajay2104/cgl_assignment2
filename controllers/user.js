@@ -4,28 +4,27 @@ const bcrypt = require('bcrypt');
 const emailRegex = require('email-regex');
 const connection = require('../models/user').connec();
 
-exports.signup = (req,res,next) => {
+exports.signup = (req, res, next) => {
     let checkUser = () => {
         return new Promise(function (resolve, reject) {
             var object = {
-                email : req.body.email
+                email: req.body.email
             }
-            connection.query('SELECT * FROM users WHERE email = ?',object.email,function(error,result){
-                if(error){
+            connection.query('SELECT * FROM users WHERE email = ?', object.email, function (error, result) {
+                if (error) {
                     res.send('Error')
                 }
-                else{
+                else {
                     if (result != '') {
-                        console.log(result)
                         var resultObj = {
                             msg: 'This User is Already Registered',
                             statusCode: 401,
                             data: []
                         }
                         reject(resultObj);
-    
-                    } 
-                    else if(!req.body.password){
+
+                    }
+                    else if (!req.body.password) {
                         var passwordObj = {
                             msg: 'Plz Set Password',
                             statusCode: 401,
@@ -40,27 +39,27 @@ exports.signup = (req,res,next) => {
                             data: []
                         }
                         reject(lengthObj);
-                    } 
+                    }
                     else {
-                       var valid = emailRegex({exact: true}).test(req.body.email);
-                        if(!valid){
+                        var valid = emailRegex({ exact: true }).test(req.body.email);
+                        if (!valid) {
                             var emailObj = {
                                 msg: 'Plz Type proper email',
                                 statusCode: 401,
                                 data: []
                             }
                             reject(emailObj);
-                        }else{
-                        resolve(req.body);
-                    } 
+                        } else {
+                            resolve(req.body);
+                        }
+                    }
                 }
-                }
-                
+
             })
-                
-    })
+
+        })
     }
-    
+
     let hashPassword = (retrieveobj) => {
         return new Promise(function (resolve, reject) {
             const user = {
@@ -70,8 +69,8 @@ exports.signup = (req,res,next) => {
             }
             bcrypt.hash(retrieveobj.password, 10).then(data => {
                 user.password = data;
-                    connection.query("INSERT INTO users (`id`, `name`, `email`, `password`) VALUES ('" + user.id + "', '" + user.name + "', '" + user.email + "', '" + user.password + "');"),function(error,result){
-                    if(error) throw error;
+                connection.query("INSERT INTO users (`id`, `name`, `email`, `password`) VALUES ('" + user.id + "', '" + user.name + "', '" + user.email + "', '" + user.password + "');"), function (error, result) {
+                    if (error) throw error;
                     else {
                         var bcryptObj = {
                             msg: 'SignUp Success',
@@ -80,118 +79,144 @@ exports.signup = (req,res,next) => {
                         }
                         resolve(bcryptObj);
                     }
-                    
+
                 }
             })
         })
     }
 
-        checkUser(req,res)
-            .then(hashPassword)
-            .then(result1 => {
-                var signupObj = {
-                    msg: 'login success',
-                    statusCode: 200,
-                    data: result1
-                }
-                res.send(signupObj);
-            }).catch(error2 => {
-                res.send(error2)
-             });
+    async function msg(req,res,next) {
+        try{
+            var check = await checkUser(req,res);
+            var hash = await hashPassword(check);
+            return hash;
+        }catch(error){
+            res.send(error);
+            console.log(error);
+        }
+    }
+
+    msg(req,res,function(err,result){
+        if(err){
+            res.send('Error');
+        }else{
+            res.send(result)
+        }   
+    })
 }
 
 
 
-exports.signin = (req,res,next) => {
+
+exports.signin = (req, res, next) => {
+    var data1 = req.body;
     let checkEmail = () => {
         return new Promise(function (resolve, reject) {
-            var obj = {
-                email : req.body.email
+            var object = {
+                email: req.body.email
             }
-            connection.query('SELECT * FROM users WHERE email = ?',obj.email,function(error,result){
-                if(error) throw error;
-                else{
+            connection.query('SELECT * FROM users WHERE email = ?', object.email, function (error, result) {
+                if (error) throw error;
+                else {
                     if (!result) {
-                        var obj = {
+                        var resultObj = {
                             msg: 'User not Found',
                             statusCode: 401,
                             data: []
                         }
-                        reject(obj);
+                        reject(resultObj);
                     }
                     else if (!req.body.email) {
-                        var obj1 = {
+                        var emailObj = {
                             msg: 'Plz Set Email',
                             statusCode: 401,
                             data: []
                         }
-                        reject(obj1);
+                        reject(emailObj);
                     }
                     else if (!req.body.password) {
-                        var obj2 = {
+                        var passwordObj = {
                             msg: 'Plz Set Password',
                             statusCode: 401,
                             data: []
                         }
-                        reject(obj2);
+                        reject(passwordObj);
                     }
                     else {
-                        var obj3 = {
+                        var elseObj = {
                             data: [],
                             result: result
                         }
-                        resolve(obj3);
+                        resolve(elseObj);
                     }
-        }
-                })
+                }
             })
-                    
+        })
+
     }
 
 
-    let comparePassword = (retrieveobj3) => {
+    let comparePassword = (retrieveobj) => {
         return new Promise(function (resolve, reject) {
-            bcrypt.compare(retrieveobj3.req.body.password, retrieveobj3.result.password)
+            bcrypt.compare(data1.password, retrieveobj.result[0].password)
                 .then(doMatch => {
                     if (doMatch) {
-                        resolve(retrieveobj3);
+                        resolve(retrieveobj);
                     } else {
-                        var obj4 = {
+                        var compareObj = {
                             msg: 'Password is Incorrect,Plz Enter correct Password',
                             statusCode: 401,
                             data: []
                         }
-                        reject(obj4);
+                        reject(compareObj);
                     }
+                }).catch(err => {
+                    res.send(err);
                 })
         })
     }
 
-    let savegeneratedToken = (retrieveobj2) => {
-        return new Promise(function (resolve, reject) {
-            var accessToken = generatewebToken(retrieveobj2.result._id);
-            User.findByIdAndUpdate(retrieveobj2.result.id, { $set: { authToken: accessToken } })
-                .select('-password')
-                .then(result1 => {
-                    resolve(result1);
-                }).catch(error3 => { reject(error3) });
-        })
-    }
-    
-    return new Promise(function (resolve, reject) {
-        checkEmail(req,res)
-            .then(comparePassword)
-            .then(savegeneratedToken)
-            .then(result => {
-                var obj2 = {
-                    msg: 'login success',
-                    statusCode: 200,
-                    data: result
+    let generatedToken = (retrieveobj) => {
+        return new Promise(function(resolve,reject){
+            var object = {
+                email: req.body.email
+            }
+            connection.query('SELECT * FROM users WHERE email = ?', object.email, function (error, result) {
+                if(error){
+                    reject(error);
+                }else {
+                    var token = jwt.sign({id:retrieveobj.id}, 'secret', {
+                        expiresIn: 86400
+                      });
+            
+                res.cookie('auth',token);
+                res.status(200).send({ auth: true, token: token });
+                resolve(result);
                 }
-                res.send(obj2);
-            })
-            .catch(error4 => {
-                res.send(error4)
-            });
+        })
+               
     })
 }
+
+        async function msg(req,res,next) {
+            try{
+                var email = await checkEmail(req,res);
+                var compare = await comparePassword(email);
+                var token = await generatedToken(compare);
+                return token;
+            }catch(error){
+                res.send(error);
+            }
+        }
+
+        msg(req,res,function(error,result){
+            if(error){
+                res.send(error);
+            }else {
+                res.send(result);
+            }
+        })
+
+}
+
+
